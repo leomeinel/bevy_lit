@@ -52,7 +52,7 @@ pub fn run_penetration_pass<'w>(
 
     let bind_group = render_context.render_device().create_bind_group(
         "penetration_bind_group",
-        &post_process_pipelines.penetration_layout,
+        &pipeline_cache.get_bind_group_layout(&post_process_pipelines.penetration_layout_desc),
         &BindGroupEntries::sequential((
             view_uniforms,
             lighting_settings_uniforms,
@@ -115,7 +115,7 @@ pub fn run_blur_pass<'w>(
 
     let bind_group = render_context.render_device().create_bind_group(
         "blur_bind_group",
-        &post_process_pipelines.blur_layout,
+        &pipeline_cache.get_bind_group_layout(&post_process_pipelines.blur_layout_desc),
         &BindGroupEntries::sequential((
             lighting_settings_uniforms,
             direction,
@@ -167,7 +167,8 @@ pub fn run_composite_pass<'w>(
 
     let bind_group = render_context.render_device().create_bind_group(
         "composite_bind_group",
-        &world.resource::<Lighting2dCompositePipeline>().layout,
+        &pipeline_cache
+            .get_bind_group_layout(&world.resource::<Lighting2dCompositePipeline>().layout_desc),
         &BindGroupEntries::sequential((
             lighting_settings_uniforms,
             post_process.source,
@@ -223,18 +224,22 @@ impl ViewNode for Light2dPostProcessDrawNode {
         let mut lighting_texture = world
             .resource::<LightingTextures>()
             .get(&view.retained_view_entity)
-            .expect(&format!(
-                "Expected the lighting texture for view {:?} to exist",
-                view.retained_view_entity.main_entity.id()
-            ))
+            .unwrap_or_else(|| {
+                panic!(
+                    "Expected the lighting texture for view {:?} to exist",
+                    view.retained_view_entity.main_entity.id()
+                )
+            })
             .clone();
         let voronoi_texture = world
             .resource::<VoronoiTextures>()
             .get(&view.retained_view_entity)
-            .expect(&format!(
-                "Expected the voronoi texture for view {:?} to exist",
-                view.retained_view_entity.main_entity.id()
-            ))
+            .unwrap_or_else(|| {
+                panic!(
+                    "Expected the voronoi texture for view {:?} to exist",
+                    view.retained_view_entity.main_entity.id()
+                )
+            })
             .clone();
 
         if should_run_penetration_pass(&lighting_settings.penetration) {
